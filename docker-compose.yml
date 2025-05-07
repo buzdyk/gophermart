@@ -35,13 +35,28 @@ services:
     container_name: gophermart_app
     volumes:
       - .:/app
-    working_dir: /app/cmd/gophermart
-    command: ["./gophermart"]
+    working_dir: /app
+    command: ["sh", "-c", "apk add --no-cache git && go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest && cd /app && go mod tidy && go build -o /app/cmd/gophermart/gophermart /app/cmd/gophermart && /app/cmd/gophermart/gophermart"]
     ports:
       - "9090:9090"
     environment:
       - DATABASE_URI=postgres://postgres:secret@postgres:5432/gophermart?sslmode=disable
       - ACCRUAL_SYSTEM_ADDRESS=http://accrual:8080
+      - JWT_SECRET_KEY=your-gophermart-jwt-secret-key
+      - PATH=$PATH:/root/go/bin
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  migrate:
+    image: migrate/migrate
+    container_name: gophermart_migrate
+    volumes:
+      - ./migrations:/migrations
+    command: ["-path", "/migrations", "-database", "postgres://postgres:secret@postgres:5432/gophermart?sslmode=disable", "up"]
+    depends_on:
+      postgres:
+        condition: service_healthy
 
 volumes:
   postgres_data:
