@@ -19,14 +19,16 @@ services:
       retries: 5
 
   accrual:
-    image: alpine:latest
+    image: debian:bullseye-slim
     container_name: gophermart_accrual
     volumes:
       - ./cmd/accrual:/app
     working_dir: /app
-    command: ["./accrual_linux_amd64"]
+    entrypoint: ["/bin/bash", "-c"]
+    command: ["apt-get update && apt-get install -y libc6-amd64-cross && ln -s /usr/x86_64-linux-gnu/lib64/ /lib64 && export LD_LIBRARY_PATH=\"$LD_LIBRARY_PATH:/lib64:/usr/x86_64-linux-gnu/lib\" && ./accrual_linux_amd64"]
     ports:
       - "8080:8080"
+    platform: linux/amd64
 
   gophermart:
     image: golang:1.23-alpine
