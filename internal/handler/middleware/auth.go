@@ -44,3 +44,8 @@ func GetUserID(ctx context.Context) (int64, bool) {
 	id, ok := ctx.Value(UserIDKey).(int64)
 	return id, ok
 }
+
+// WithUserID adds a user ID to the context (helper for testing)
+func WithUserID(ctx context.Context, userID int64) context.Context {
+	return context.WithValue(ctx, UserIDKey, userID)
+}
