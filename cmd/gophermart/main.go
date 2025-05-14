@@ -11,7 +11,9 @@ import (
 
 	"github.com/riouske/gophermart/internal/config"
 	"github.com/riouske/gophermart/internal/db"
+	"github.com/riouske/gophermart/internal/handler/gophermart/order"
 	"github.com/riouske/gophermart/internal/handler/gophermart/user"
+	"github.com/riouske/gophermart/internal/handler/middleware"
 	"github.com/riouske/gophermart/internal/repository"
 	"github.com/riouske/gophermart/internal/service"
 )
@@ -28,18 +30,35 @@ func main() {
 	defer database.Close()
 
 	userRepo := repository.NewUserRepository(database)
+	orderRepo := repository.NewOrderRepository(database)
 	authService := service.NewAuthService(userRepo, cfg.JWTSecretKey)
 
+	// Create handlers
 	registerHandler := user.NewRegisterHandler(authService)
 	loginHandler := user.NewLoginHandler(authService)
+	createOrderHandler := order.NewCreateHandler(orderRepo)
+	listOrdersHandler := order.NewIndexHandler(orderRepo)
+
+	// Create the auth middleware
+	authMiddleware := middleware.Auth(authService)
 
 	mux := http.NewServeMux()
 
+	// Public routes
 	mux.Handle("/api/user/register", registerHandler)
 	mux.Handle("/api/user/login", loginHandler)
 
-	// Create an auth middleware
-	//authMiddleware := middleware.Auth(authService)
+	// Protected routes
+	mux.Handle("/api/user/orders", authMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodPost:
+			createOrderHandler.ServeHTTP(w, r)
+		case http.MethodGet:
+			listOrdersHandler.ServeHTTP(w, r)
+		default:
+			w.WriteHeader(http.StatusMethodNotAllowed)
+		}
+	})))
 
 	server := &http.Server{
 		Addr:    cfg.ServerAddress,
